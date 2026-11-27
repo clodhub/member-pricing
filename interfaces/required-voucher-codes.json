@@ -1,0 +1,367 @@
+{
+  "openrpc": "1.3.2",
+  "info": {
+    "title": "com.clodhub/voucher-codes",
+    "version": "1.0.0",
+    "description": "Readable bearer codes for gift cards, member vouchers and email verification: groups of characters from an alphabet without look-alike characters, each drawn from a com.clodhub/random-source, and the reading of what people type back into the stored form. Server only."
+  },
+  "methods": [
+    {
+      "name": "createVoucherCodes",
+      "description": "A generator and reader of codes in the shape the settings give (the installed settings, replaced by any in `options`). Characters are drawn from left to right, each with one `source.int(alphabet length)` call, and each is the alphabet's character at that index, so codes are as unbiased as the source.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "options",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/CreateOptions"
+          }
+        }
+      ],
+      "result": {
+        "name": "codes",
+        "schema": {
+          "$ref": "#/components/schemas/VoucherCodes"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidSettings"
+        },
+        {
+          "$ref": "#/components/errors/MissingSource"
+        }
+      ]
+    },
+    {
+      "name": "VoucherCodes.generate",
+      "description": "A new code: `groups` groups of `groupLength` characters joined by hyphens (ABCD-EFGH-JKMN with the defaults).",
+      "paramStructure": "by-position",
+      "params": [],
+      "result": {
+        "name": "code",
+        "schema": {
+          "type": "string",
+          "description": "Groups of characters from the alphabet joined by hyphens, such as ABCD-EFGH-JKMN."
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/BadSourceValue"
+        }
+      ]
+    },
+    {
+      "name": "VoucherCodes.generateShort",
+      "description": "A new code of one group of `length` characters with no separator, such as an email verification code (6 characters, 30 bits). The length is not held to the 40-bit floor of the settings: short codes are for codes that expire within minutes and allow few wrong tries.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "length",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          }
+        }
+      ],
+      "result": {
+        "name": "code",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidLength"
+        },
+        {
+          "$ref": "#/components/errors/BadSourceValue"
+        }
+      ]
+    },
+    {
+      "name": "VoucherCodes.normalise",
+      "description": "The code a person typed or pasted, in its stored form: surrounding space removed, upper case, spaces and hyphens dropped and the characters grouped again, so ` abcd efgh jkmn ` and `ABCDEFGHJKMN` both give ABCD-EFGH-JKMN. Null when the text is not text, has the wrong number of characters, or has a character outside the alphabet.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "text",
+          "required": true,
+          "schema": {}
+        }
+      ],
+      "result": {
+        "name": "code",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Groups of characters from the alphabet joined by hyphens, such as ABCD-EFGH-JKMN."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "VoucherCodes.isCode",
+      "description": "Whether normalise reads the text as a code of this shape.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "text",
+          "required": true,
+          "schema": {}
+        }
+      ],
+      "result": {
+        "name": "isCode",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "VoucherCodes.withRetry",
+      "description": "Calls `attempt` with a new code until it returns; when it throws an error that `isCollision` accepts (a duplicate key in the store) it tries again with another code, at most `attempts` times in all (3 by default), then throws that error. Any other error is thrown at once.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "attempt",
+          "required": true,
+          "schema": {
+            "description": "A function (code: string) => Promise<T>, such as one that stores a document with the code."
+          }
+        },
+        {
+          "name": "isCollision",
+          "required": true,
+          "schema": {
+            "description": "A function (error: unknown) => boolean: whether the error means the code is taken."
+          }
+        },
+        {
+          "name": "attempts",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 3
+          }
+        }
+      ],
+      "result": {
+        "name": "value",
+        "schema": {
+          "description": "What attempt returned."
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidAttempts"
+        }
+      ]
+    },
+    {
+      "name": "settingsFrom",
+      "description": "Converts and checks settings given as numbers or as rendered template text; unset and unrendered values take the defaults (DEFAULT_SETTINGS).",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "raw",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/RawSettings"
+          }
+        }
+      ],
+      "result": {
+        "name": "settings",
+        "schema": {
+          "$ref": "#/components/schemas/VoucherCodeSettings"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidSettings"
+        }
+      ]
+    },
+    {
+      "name": "installedSettings",
+      "description": "The settings clod rendered at install, converted by settingsFrom.",
+      "paramStructure": "by-position",
+      "params": [],
+      "result": {
+        "name": "settings",
+        "schema": {
+          "$ref": "#/components/schemas/VoucherCodeSettings"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidSettings"
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "VoucherCodeSettings": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8,
+            "default": 3
+          },
+          "groupLength": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 16,
+            "default": 4
+          },
+          "alphabet": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,63}$",
+            "default": "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+            "description": "Upper-case letters and digits, each once. The default leaves out I, O, 0 and 1, which are easy to misread."
+          }
+        },
+        "required": [
+          "groups",
+          "groupLength",
+          "alphabet"
+        ],
+        "additionalProperties": false,
+        "description": "The shape of the codes generate() makes. They are bearer codes that stay valid for months, so the shape carries at least 40 random bits: groups x groupLength x log2(alphabet length) >= 40. generateShort has no such floor."
+      },
+      "RawSettings": {
+        "type": "object",
+        "properties": {
+          "groups": {},
+          "groupLength": {},
+          "alphabet": {}
+        },
+        "description": "Settings as numbers or as the text clod renders into the settings template; a missing value, or one still in its {{name}} form, takes the default."
+      },
+      "RandomSource": {
+        "type": "object",
+        "properties": {
+          "int": {
+            "description": "A function int(bound: number): number returning a whole number in [0, bound), each equally likely."
+          }
+        },
+        "required": [
+          "int"
+        ],
+        "description": "A com.clodhub/random-source RandomSource (the fair-shuffle component's, created with source secure); only int is used."
+      },
+      "CreateOptions": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/RandomSource"
+          },
+          "groups": {
+            "type": "integer"
+          },
+          "groupLength": {
+            "type": "integer"
+          },
+          "alphabet": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "additionalProperties": false,
+        "description": "The random source, and settings that replace the installed ones."
+      },
+      "VoucherCodes": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/VoucherCodeSettings"
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "description": "A code generator and reader for one code shape; `settings` is the shape in use."
+      }
+    },
+    "errors": {
+      "InvalidSettings": {
+        "code": -32020,
+        "message": "RangeError: a setting is out of range, the alphabet is not upper-case letters and digits each once, or the codes generate() makes would carry fewer than 40 random bits"
+      },
+      "MissingSource": {
+        "code": -32021,
+        "message": "TypeError: no random source with an int function was given"
+      },
+      "BadSourceValue": {
+        "code": -32022,
+        "message": "RangeError: the random source returned something other than a whole number in [0, bound)"
+      },
+      "InvalidLength": {
+        "code": -32023,
+        "message": "RangeError: a short code length is not a whole number from 1 to 64"
+      },
+      "InvalidAttempts": {
+        "code": -32024,
+        "message": "RangeError: attempts is not a whole number of at least 1"
+      }
+    }
+  },
+  "x-clodhub-modules": {
+    "server": "server/index.ts"
+  }
+}

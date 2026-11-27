@@ -1,0 +1,2337 @@
+{
+  "openrpc": "1.3.2",
+  "info": {
+    "title": "com.clodhub/member-pricing",
+    "version": "1.0.0",
+    "description": "Member prices: plans that give their members a percentage off, fixed prices for some items, or both. Staff open a sign-up session for a plan and share its link; the person gives a name and email; staff approve, and the member gets a voucher whose code gives the plan's prices. The price rules are pure and the same in the browser and on the server; the server keeps plans, sessions and vouchers in a records store (com.clodhub/records) and draws codes from voucher codes (com.clodhub/voucher-codes). Amounts are integers in minor units. Emails are the application's."
+  },
+  "methods": [
+    {
+      "name": "isEligible",
+      "description": "Whether a member with this rule has the item at a member price; true for everyone when there is no rule. Custom and mixed plans cover exactly the items in itemPricing; discount plans all items, the items named or the items of the categories named.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "rule",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PricingRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "The member's rule; null for everyone else."
+        },
+        {
+          "name": "slug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "categorySlug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "eligible",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "isFixedPrice",
+      "description": "Whether the item has a fixed member price: every item of a custom plan, the items of a mixed plan priced with type fixed.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "rule",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PricingRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "The member's rule; null for everyone else."
+        },
+        {
+          "name": "slug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "fixed",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "discountPercentFor",
+      "description": "The member's percentage off the item: a discount plan's for covered items, a mixed plan's discount entry for the item; null otherwise.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "rule",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PricingRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "The member's rule; null for everyone else."
+        },
+        {
+          "name": "slug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "categorySlug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "percent",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "applyDiscount",
+      "description": "The price less the percentage, rounded half up to the minor unit.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "price",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "An amount in the currency's minor unit (cents for EUR).",
+            "minimum": 0
+          }
+        },
+        {
+          "name": "percent",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      ],
+      "result": {
+        "name": "price",
+        "schema": {
+          "type": "integer",
+          "description": "An amount in the currency's minor unit (cents for EUR)."
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidArgument"
+        }
+      ]
+    },
+    {
+      "name": "resolveItemPrice",
+      "description": "The price charged for one item at the requested length, the same on the reserve page and the server: a fixed price sells only its own length (and a custom plan nothing it does not price); otherwise the catalogue option of that length, less the member's discount where one applies. Null when the item is not sold at that length.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "rule",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PricingRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "The member's rule; null for everyone else."
+        },
+        {
+          "name": "slug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "categorySlug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "options",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceOption"
+            }
+          }
+        },
+        {
+          "name": "requestedMinutes",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "resolved",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "price": {
+                  "type": "integer",
+                  "description": "An amount in the currency's minor unit (cents for EUR)."
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "price",
+                "minutes"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "validatePlanInput",
+      "description": "Checks a plan from the owner's form and gives the plan to store, or the first problem as a code with an English description. Custom and mixed plans get itemSlugs from itemPricing, no categories, allItems false and discountPercent 0; custom entries are fixed prices; mixed discount entries carry minutes and price 0.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "input",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PlanForm"
+          }
+        },
+        {
+          "name": "settings",
+          "required": false,
+          "schema": {
+            "$ref": "#/components/schemas/MemberPricingSettings"
+          },
+          "description": "The installed settings by default."
+        }
+      ],
+      "result": {
+        "name": "checked",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "plan": {
+                  "$ref": "#/components/schemas/PlanInput"
+                }
+              },
+              "required": [
+                "ok",
+                "plan"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "INVALID_INPUT",
+                    "INVALID_TITLE",
+                    "INVALID_CONDITIONS",
+                    "INVALID_VALIDITY",
+                    "INVALID_MODE",
+                    "INVALID_DISCOUNT",
+                    "INVALID_SCOPE",
+                    "MISSING_ITEMS",
+                    "INVALID_ITEM_TYPE",
+                    "INVALID_MINUTES",
+                    "INVALID_PRICE"
+                  ]
+                },
+                "error": {
+                  "type": "string",
+                  "description": "What is wrong, in English, naming the item."
+                }
+              },
+              "required": [
+                "ok",
+                "code",
+                "error"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "expiryFrom",
+      "description": "When a voucher issued at from stops: amount weeks, calendar months or years later, in UTC; a day the target month lacks becomes its last day.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "validity",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Validity"
+          }
+        },
+        {
+          "name": "from",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "date-time",
+            "description": "A JavaScript Date; shown here as its ISO 8601 text."
+          }
+        }
+      ],
+      "result": {
+        "name": "expiresAt",
+        "schema": {
+          "type": "string",
+          "format": "date-time",
+          "description": "A JavaScript Date; shown here as its ISO 8601 text."
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidArgument"
+        }
+      ]
+    },
+    {
+      "name": "normaliseEmail",
+      "description": "An address trimmed and in lower case; null when it is not an address.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "text",
+          "required": true,
+          "schema": {}
+        }
+      ],
+      "result": {
+        "name": "email",
+        "schema": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "isLanguage",
+      "description": "Whether the value is a language code such as en, es or pt-BR.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "value",
+          "required": true,
+          "schema": {}
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ]
+    },
+    {
+      "name": "settingsFrom",
+      "description": "Converts and checks settings given as numbers or as rendered template text; unset and unrendered values take the defaults (DEFAULT_SETTINGS).",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "raw",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/RawSettings"
+          }
+        }
+      ],
+      "result": {
+        "name": "settings",
+        "schema": {
+          "$ref": "#/components/schemas/MemberPricingSettings"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidSettings"
+        }
+      ]
+    },
+    {
+      "name": "installedSettings",
+      "description": "The settings clod rendered at install, converted by settingsFrom.",
+      "paramStructure": "by-position",
+      "params": [],
+      "result": {
+        "name": "settings",
+        "schema": {
+          "$ref": "#/components/schemas/MemberPricingSettings"
+        }
+      },
+      "tags": [
+        {
+          "name": "typescript"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidSettings"
+        }
+      ]
+    },
+    {
+      "name": "createMemberPricing",
+      "description": "The shop's member plans, sign-up sessions and vouchers in the records store, with the installed settings or options.settings over them.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "options",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/CreateOptions"
+          }
+        }
+      ],
+      "result": {
+        "name": "memberPricing",
+        "schema": {
+          "$ref": "#/components/schemas/MemberPricing"
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/InvalidSettings"
+        },
+        {
+          "$ref": "#/components/errors/MissingCodes"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.ensureIndexes",
+      "description": "Creates the indexes: voucher codes and session ids unique, sessions removed sessionMinutes after opening.",
+      "paramStructure": "by-position",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "null"
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/StoreFailure"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.listPlans",
+      "description": "Every plan, newest first, with its memberCount.",
+      "paramStructure": "by-position",
+      "params": [],
+      "result": {
+        "name": "plans",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/PlanListing"
+          }
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.plan",
+      "description": "One plan, or null.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "planId",
+          "required": true,
+          "schema": {},
+          "description": "A plan's _id; anything else is NOT_FOUND."
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/Plan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.createPlan",
+      "description": "Checks the form (validatePlanInput) and stores a new plan, switched off.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "input",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PlanForm"
+          }
+        }
+      ],
+      "result": {
+        "name": "created",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "plan": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              },
+              "required": [
+                "ok",
+                "plan"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "INVALID_INPUT",
+                    "INVALID_TITLE",
+                    "INVALID_CONDITIONS",
+                    "INVALID_VALIDITY",
+                    "INVALID_MODE",
+                    "INVALID_DISCOUNT",
+                    "INVALID_SCOPE",
+                    "MISSING_ITEMS",
+                    "INVALID_ITEM_TYPE",
+                    "INVALID_MINUTES",
+                    "INVALID_PRICE"
+                  ]
+                },
+                "error": {
+                  "type": "string",
+                  "description": "What is wrong, in English, naming the item."
+                }
+              },
+              "required": [
+                "ok",
+                "code",
+                "error"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.updatePlan",
+      "description": "The fields given replace the plan's and the whole plan is checked again. Vouchers already issued keep their rule.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "planId",
+          "required": true,
+          "schema": {},
+          "description": "A plan's _id; anything else is NOT_FOUND."
+        },
+        {
+          "name": "input",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/PlanForm"
+          }
+        }
+      ],
+      "result": {
+        "name": "updated",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "plan": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              },
+              "required": [
+                "ok",
+                "plan"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "INVALID_INPUT",
+                    "INVALID_TITLE",
+                    "INVALID_CONDITIONS",
+                    "INVALID_VALIDITY",
+                    "INVALID_MODE",
+                    "INVALID_DISCOUNT",
+                    "INVALID_SCOPE",
+                    "MISSING_ITEMS",
+                    "INVALID_ITEM_TYPE",
+                    "INVALID_MINUTES",
+                    "INVALID_PRICE"
+                  ]
+                },
+                "error": {
+                  "type": "string",
+                  "description": "What is wrong, in English, naming the item."
+                }
+              },
+              "required": [
+                "ok",
+                "code",
+                "error"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "const": "NOT_FOUND"
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.removePlan",
+      "description": "Deletes a plan; its vouchers keep working until they expire or are revoked.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "planId",
+          "required": true,
+          "schema": {},
+          "description": "A plan's _id; anything else is NOT_FOUND."
+        }
+      ],
+      "result": {
+        "name": "removed",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                }
+              },
+              "required": [
+                "ok"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.setPlanActive",
+      "description": "Switches a plan on or off; only an active plan opens sign-up sessions. An active that is not a boolean is MISSING_FIELDS.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "planId",
+          "required": true,
+          "schema": {},
+          "description": "A plan's _id; anything else is NOT_FOUND."
+        },
+        {
+          "name": "active",
+          "required": true,
+          "schema": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "result": {
+        "name": "switched",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "plan": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              },
+              "required": [
+                "ok",
+                "plan"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND",
+                    "MISSING_FIELDS"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.openSession",
+      "description": "Opens a sign-up session for an active plan; the application shares its link (or a QR code of it). It lasts sessionMinutes.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "planId",
+          "required": true,
+          "schema": {},
+          "description": "A plan's _id; anything else is NOT_FOUND."
+        }
+      ],
+      "result": {
+        "name": "opened",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "sessionId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "A JavaScript Date; shown here as its ISO 8601 text."
+                }
+              },
+              "required": [
+                "ok",
+                "sessionId",
+                "expiresAt"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND",
+                    "INACTIVE"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.submitSession",
+      "description": "The person's name (1 to 100 characters) and email on the sign-up page; the session then waits for staff. A missing or unknown language becomes en. Name and email are checked before the session.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {},
+          "description": "The id openSession gave."
+        },
+        {
+          "name": "details",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "language": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "submitted",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                }
+              },
+              "required": [
+                "ok"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND",
+                    "WRONG_STATE",
+                    "INVALID_NAME",
+                    "INVALID_EMAIL"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.session",
+      "description": "What the sign-up page and the staff page show while they wait; null when there is no such session or it has expired.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {},
+          "description": "The id openSession gave."
+        }
+      ],
+      "result": {
+        "name": "view",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/SessionView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.approve",
+      "description": "Issues the member's voucher from a session waiting for staff: a new code (drawn again when taken), the plan's rule, expiry from the plan's validity. Once only. The application then sends the member the code.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {},
+          "description": "The id openSession gave."
+        }
+      ],
+      "result": {
+        "name": "approved",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "voucher": {
+                  "$ref": "#/components/schemas/Voucher"
+                },
+                "plan": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              },
+              "required": [
+                "ok",
+                "voucher",
+                "plan"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND",
+                    "WRONG_STATE",
+                    "PLAN_NOT_FOUND"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/StoreFailure"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.validate",
+      "description": "What the reserve page asks before showing member prices. An active voucher past its expiry is marked expired.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "code",
+          "required": true,
+          "schema": {},
+          "description": "A code as typed or pasted; voucher codes' normalise reads it."
+        }
+      ],
+      "result": {
+        "name": "validation",
+        "schema": {
+          "$ref": "#/components/schemas/Validation"
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.lookup",
+      "description": "A voucher for staff, with an active one past its expiry marked expired; null when there is none.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "code",
+          "required": true,
+          "schema": {},
+          "description": "A code as typed or pasted; voucher codes' normalise reads it."
+        }
+      ],
+      "result": {
+        "name": "voucher",
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/Voucher"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.revoke",
+      "description": "Revokes a voucher; it no longer validates.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "code",
+          "required": true,
+          "schema": {},
+          "description": "A code as typed or pasted; voucher codes' normalise reads it."
+        }
+      ],
+      "result": {
+        "name": "revoked",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "voucher": {
+                  "$ref": "#/components/schemas/Voucher"
+                }
+              },
+              "required": [
+                "ok",
+                "voucher"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.remove",
+      "description": "Deletes a voucher and returns it for the removal email: notify is true when it was not revoked, and expired says whether it had expired.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "code",
+          "required": true,
+          "schema": {},
+          "description": "A code as typed or pasted; voucher codes' normalise reads it."
+        }
+      ],
+      "result": {
+        "name": "removed",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "voucher": {
+                  "$ref": "#/components/schemas/Voucher"
+                },
+                "notify": {
+                  "type": "boolean"
+                },
+                "expired": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "ok",
+                "voucher",
+                "notify",
+                "expired"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.changeEmail",
+      "description": "Changes where the code is sent, before the application sends it again; plan is null when the plan was removed.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "code",
+          "required": true,
+          "schema": {},
+          "description": "A code as typed or pasted; voucher codes' normalise reads it."
+        },
+        {
+          "name": "email",
+          "required": true,
+          "schema": {}
+        }
+      ],
+      "result": {
+        "name": "changed",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": true
+                },
+                "voucher": {
+                  "$ref": "#/components/schemas/Voucher"
+                },
+                "plan": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Plan"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "voucher",
+                "plan"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "const": false
+                },
+                "code": {
+                  "enum": [
+                    "NOT_FOUND",
+                    "INVALID_EMAIL"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "code"
+              ]
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.vouchersOf",
+      "description": "A plan's vouchers, newest first, with lapsed ones marked expired.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "planId",
+          "required": true,
+          "schema": {},
+          "description": "A plan's _id; anything else is NOT_FOUND."
+        }
+      ],
+      "result": {
+        "name": "vouchers",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Voucher"
+          }
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.vouchersByEmail",
+      "description": "The vouchers issued to an address, newest first (by issuedAt, then _id), with lapsed ones marked expired; revoked ones are included with their status. The address is read as normaliseEmail reads it, and text that is not an address gives []. For a customer's wallet: the application confirms the address (com.clodhub/email-verification) first.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "email",
+          "required": true,
+          "schema": {}
+        }
+      ],
+      "result": {
+        "name": "vouchers",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Voucher"
+          }
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ],
+      "errors": [
+        {
+          "$ref": "#/components/errors/StoreFailure"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.resolveItemPrice",
+      "description": "resolveItemPrice itself, for a caller that receives only this object, such as reservations: it prices each line with activeRule's rule.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "rule",
+          "required": true,
+          "schema": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PricingRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "The member's rule; null for everyone else."
+        },
+        {
+          "name": "slug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "categorySlug",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "options",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceOption"
+            }
+          }
+        },
+        {
+          "name": "requestedMinutes",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "resolved",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "price": {
+                  "type": "integer",
+                  "description": "An amount in the currency's minor unit (cents for EUR)."
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "price",
+                "minutes"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    },
+    {
+      "name": "MemberPricing.activeRule",
+      "description": "The rule the server prices a booking with: null unless the voucher is active and unexpired.",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "code",
+          "required": true,
+          "schema": {},
+          "description": "A code as typed or pasted; voucher codes' normalise reads it."
+        }
+      ],
+      "result": {
+        "name": "active",
+        "schema": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "rule": {
+                  "$ref": "#/components/schemas/PricingRule"
+                },
+                "voucher": {
+                  "$ref": "#/components/schemas/Voucher"
+                }
+              },
+              "required": [
+                "rule",
+                "voucher"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "tags": [
+        {
+          "name": "server"
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "LocalText": {
+        "type": "object",
+        "propertyNames": {
+          "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+        },
+        "additionalProperties": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+      },
+      "ItemPrice": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "discount",
+              "fixed"
+            ]
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The one length a fixed price sells; 0 for a discount."
+          },
+          "price": {
+            "type": "integer",
+            "description": "The fixed price; 0 for a discount.",
+            "minimum": 0
+          },
+          "discountPercent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99,
+            "description": "A discount entry's percentage off the catalogue price."
+          }
+        },
+        "required": [
+          "minutes",
+          "price"
+        ],
+        "description": "One item's member price: a fixed price for one length, or a percentage off."
+      },
+      "PricingRule": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "enum": [
+              "discount",
+              "custom",
+              "mixed"
+            ],
+            "description": "discount: discountPercent off the covered items; custom: fixed prices for the items in itemPricing and nothing else; mixed: per item in itemPricing, a fixed price or a discount, other items at the catalogue price."
+          },
+          "discountPercent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99,
+            "description": "The discount plan's percentage; 0 for custom and mixed."
+          },
+          "itemSlugs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "categorySlugs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "allItems": {
+            "type": "boolean"
+          },
+          "itemPricing": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "enum": [
+                    "discount",
+                    "fixed"
+                  ]
+                },
+                "minutes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "The one length a fixed price sells; 0 for a discount."
+                },
+                "price": {
+                  "type": "integer",
+                  "description": "The fixed price; 0 for a discount.",
+                  "minimum": 0
+                },
+                "discountPercent": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99,
+                  "description": "A discount entry's percentage off the catalogue price."
+                }
+              },
+              "required": [
+                "minutes",
+                "price"
+              ]
+            },
+            "description": "Custom and mixed plans: item slug to its member price. Absent for discount plans."
+          }
+        },
+        "required": [
+          "mode",
+          "discountPercent",
+          "itemSlugs",
+          "categorySlugs",
+          "allItems"
+        ],
+        "description": "What a member pays: the rule of a plan, copied into each voucher."
+      },
+      "Validity": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "unit": {
+            "enum": [
+              "weeks",
+              "months",
+              "year"
+            ]
+          }
+        },
+        "required": [
+          "amount",
+          "unit"
+        ],
+        "additionalProperties": false,
+        "description": "How long a voucher lasts from approval: weeks, calendar months or years."
+      },
+      "PriceOption": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "price": {
+            "type": "integer",
+            "description": "An amount in the currency's minor unit (cents for EUR)."
+          }
+        },
+        "required": [
+          "minutes",
+          "price"
+        ],
+        "description": "A catalogue price option (shop-catalogue's PriceOption)."
+      },
+      "PlanForm": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "conditions": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "mode": {
+            "enum": [
+              "discount",
+              "custom",
+              "mixed"
+            ],
+            "default": "discount"
+          },
+          "discountPercent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          },
+          "itemSlugs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "categorySlugs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "allItems": {
+            "type": "boolean"
+          },
+          "itemPricing": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "enum": [
+                    "discount",
+                    "fixed"
+                  ]
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "price": {
+                  "type": "integer",
+                  "description": "An amount in the currency's minor unit (cents for EUR)."
+                },
+                "discountPercent": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99
+                }
+              }
+            },
+            "description": "Custom and mixed plans: item slug to a fixed price (minutes and price, multiples of minutesStep and fixedPriceStep within the settings' bounds) or, in mixed plans, a discount."
+          },
+          "validity": {
+            "$ref": "#/components/schemas/Validity"
+          }
+        },
+        "description": "A plan as the owner's form sends it. Unknown fields are ignored."
+      },
+      "PlanInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "conditions": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "rule": {
+            "$ref": "#/components/schemas/PricingRule"
+          },
+          "validity": {
+            "$ref": "#/components/schemas/Validity"
+          }
+        },
+        "required": [
+          "title",
+          "conditions",
+          "rule",
+          "validity"
+        ],
+        "additionalProperties": false,
+        "description": "A checked plan, ready to store. Custom and mixed plans cover exactly the items they price."
+      },
+      "PlanInputCode": {
+        "enum": [
+          "INVALID_INPUT",
+          "INVALID_TITLE",
+          "INVALID_CONDITIONS",
+          "INVALID_VALIDITY",
+          "INVALID_MODE",
+          "INVALID_DISCOUNT",
+          "INVALID_SCOPE",
+          "MISSING_ITEMS",
+          "INVALID_ITEM_TYPE",
+          "INVALID_MINUTES",
+          "INVALID_PRICE"
+        ]
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A records document id."
+          },
+          "title": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "conditions": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "rule": {
+            "$ref": "#/components/schemas/PricingRule"
+          },
+          "validity": {
+            "$ref": "#/components/schemas/Validity"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "A JavaScript Date; shown here as its ISO 8601 text."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "A JavaScript Date; shown here as its ISO 8601 text."
+          }
+        },
+        "required": [
+          "_id",
+          "title",
+          "conditions",
+          "rule",
+          "validity",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false,
+        "description": "A member plan as stored (com.clodhub/member-plan)."
+      },
+      "PlanListing": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Plan"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "memberCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Its vouchers that are not revoked."
+              }
+            },
+            "required": [
+              "memberCount"
+            ]
+          }
+        ]
+      },
+      "PlanSummary": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A records document id."
+          },
+          "title": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "conditions": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Text by language code, such as {\"en\": ..., \"es\": ...}; any number of languages."
+          },
+          "rule": {
+            "$ref": "#/components/schemas/PricingRule"
+          },
+          "validity": {
+            "$ref": "#/components/schemas/Validity"
+          }
+        },
+        "required": [
+          "_id",
+          "title",
+          "conditions",
+          "rule",
+          "validity"
+        ]
+      },
+      "Voucher": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A records document id."
+          },
+          "code": {
+            "type": "string",
+            "description": "A voucher code in the stored form voucher codes' normalise gives, such as ABCD-EFGH-JKMN."
+          },
+          "planId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A records document id."
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "rule": {
+            "$ref": "#/components/schemas/PricingRule",
+            "description": "The plan's rule when the voucher was approved; later plan edits leave it."
+          },
+          "status": {
+            "enum": [
+              "active",
+              "expired",
+              "revoked"
+            ]
+          },
+          "language": {
+            "type": "string"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "A JavaScript Date; shown here as its ISO 8601 text."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "A JavaScript Date; shown here as its ISO 8601 text."
+          }
+        },
+        "required": [
+          "_id",
+          "code",
+          "planId",
+          "name",
+          "email",
+          "rule",
+          "status",
+          "language",
+          "issuedAt",
+          "expiresAt"
+        ],
+        "additionalProperties": false,
+        "description": "A member voucher as stored (com.clodhub/member-voucher)."
+      },
+      "SessionState": {
+        "enum": [
+          "pending_email",
+          "pending_approval",
+          "approved"
+        ]
+      },
+      "SessionView": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SessionState"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "language": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "A JavaScript Date; shown here as its ISO 8601 text."
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PlanSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sessionId",
+          "state",
+          "name",
+          "email",
+          "language",
+          "expiresAt",
+          "plan"
+        ],
+        "description": "What the sign-up page and the staff page show; plan is null when the plan was removed."
+      },
+      "Validation": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "valid": {
+                "const": true
+              },
+              "code": {
+                "type": "string",
+                "description": "A voucher code in the stored form voucher codes' normalise gives, such as ABCD-EFGH-JKMN."
+              },
+              "rule": {
+                "$ref": "#/components/schemas/PricingRule"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "A JavaScript Date; shown here as its ISO 8601 text."
+              }
+            },
+            "required": [
+              "valid",
+              "code",
+              "rule",
+              "name",
+              "email",
+              "expiresAt"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "valid": {
+                "const": false
+              },
+              "reason": {
+                "enum": [
+                  "missing_code",
+                  "not_found",
+                  "revoked",
+                  "expired"
+                ]
+              }
+            },
+            "required": [
+              "valid",
+              "reason"
+            ]
+          }
+        ]
+      },
+      "MemberPricingSettings": {
+        "type": "object",
+        "properties": {
+          "minimumFixedPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "default": 500
+          },
+          "maximumFixedPrice": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "default": 50000
+          },
+          "fixedPriceStep": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000,
+            "default": 500
+          },
+          "minimumMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440,
+            "default": 5
+          },
+          "maximumMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440,
+            "default": 180
+          },
+          "minutesStep": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440,
+            "default": 5
+          },
+          "sessionMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440,
+            "default": 15,
+            "description": "How long a sign-up session lasts from opening, whatever its state."
+          }
+        },
+        "required": [
+          "minimumFixedPrice",
+          "maximumFixedPrice",
+          "fixedPriceStep",
+          "minimumMinutes",
+          "maximumMinutes",
+          "minutesStep",
+          "sessionMinutes"
+        ],
+        "additionalProperties": false,
+        "description": "Prices are in minor units; each maximum is at least its minimum."
+      },
+      "RawSettings": {
+        "type": "object",
+        "additionalProperties": {
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "description": "Settings as numbers or as the rendered template's text; unset and unrendered ({{name}}) values take the defaults."
+      },
+      "VoucherCodes": {
+        "type": "object",
+        "properties": {
+          "normalise": {
+            "description": "(text: unknown) => string | null"
+          },
+          "withRetry": {
+            "description": "(attempt, isCollision, attempts?) => Promise"
+          }
+        },
+        "required": [
+          "normalise",
+          "withRetry"
+        ],
+        "description": "What createVoucherCodes (com.clodhub/voucher-codes) returns; normalise and withRetry are used."
+      },
+      "CreateOptions": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "description": "The records store (com.clodhub/records); the documents live in its collections memberPlans, memberVouchers and memberSessions (PLANS_COLLECTION, VOUCHERS_COLLECTION, SESSIONS_COLLECTION)."
+          },
+          "codes": {
+            "$ref": "#/components/schemas/VoucherCodes"
+          },
+          "now": {
+            "description": "Returns the current Date, for timestamps, session lifetimes and expiry; the system clock by default."
+          },
+          "settings": {
+            "$ref": "#/components/schemas/RawSettings",
+            "description": "Settings that replace the installed ones."
+          }
+        },
+        "required": [
+          "records",
+          "codes"
+        ],
+        "additionalProperties": false
+      },
+      "MemberPricing": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/MemberPricingSettings"
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "description": "The shop's member plans, sign-up sessions and vouchers in a records store."
+      }
+    },
+    "errors": {
+      "InvalidSettings": {
+        "code": -32040,
+        "message": "RangeError: a setting outside its range, or a maximum below its minimum"
+      },
+      "InvalidArgument": {
+        "code": -32041,
+        "message": "RangeError: a price, percentage, validity or date outside its range"
+      },
+      "MissingCodes": {
+        "code": -32042,
+        "message": "TypeError: createMemberPricing was given no voucher codes object (normalise and withRetry)"
+      },
+      "StoreFailure": {
+        "code": -32043,
+        "message": "An error of the records store or of codes.withRetry, passed on; approve first returns the session to pending_approval"
+      }
+    }
+  },
+  "x-clodhub-modules": {
+    "web": "web/index.ts",
+    "server": "server/index.ts"
+  }
+}

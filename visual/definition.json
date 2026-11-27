@@ -1,0 +1,96 @@
+{
+  "id": "com.clodhub.member-pricing",
+  "name": "Member pricing",
+  "kind": "component",
+  "status": "example",
+  "package": "pkg:clod/com.clodhub/member-pricing",
+  "version": "0.1.0",
+  "ports": [
+    {
+      "id": "records",
+      "name": "Records",
+      "direction": "input",
+      "kind": "interface",
+      "type": "com.clodhub/records",
+      "version": "1.0.0",
+      "required": true,
+      "cardinality": "one"
+    },
+    {
+      "id": "voucher-codes",
+      "name": "Voucher codes",
+      "direction": "input",
+      "kind": "interface",
+      "type": "com.clodhub/voucher-codes",
+      "version": "1.0.0",
+      "required": true,
+      "cardinality": "one"
+    },
+    {
+      "id": "member-pricing",
+      "name": "Member pricing",
+      "direction": "output",
+      "kind": "interface",
+      "type": "com.clodhub/member-pricing",
+      "version": "1.0.0"
+    }
+  ],
+  "settings": [
+    {
+      "id": "minimumFixedPrice",
+      "name": "Minimumfixedprice",
+      "type": "number",
+      "required": false,
+      "secret": false,
+      "default": 500
+    },
+    {
+      "id": "maximumFixedPrice",
+      "name": "Maximumfixedprice",
+      "type": "number",
+      "required": false,
+      "secret": false,
+      "default": 50000
+    },
+    {
+      "id": "fixedPriceStep",
+      "name": "Fixedpricestep",
+      "type": "number",
+      "required": false,
+      "secret": false,
+      "default": 500
+    },
+    {
+      "id": "minimumMinutes",
+      "name": "Minimumminutes",
+      "type": "number",
+      "required": false,
+      "secret": false,
+      "default": 5
+    },
+    {
+      "id": "maximumMinutes",
+      "name": "Maximumminutes",
+      "type": "number",
+      "required": false,
+      "secret": false,
+      "default": 180
+    },
+    {
+      "id": "minutesStep",
+      "name": "Minutesstep",
+      "type": "number",
+      "required": false,
+      "secret": false,
+      "default": 5
+    },
+    {
+      "id": "sessionMinutes",
+      "name": "Sessionminutes",
+      "type": "number",
+      "required": false,
+      "secret": false,
+      "default": 15
+    }
+  ]
+}

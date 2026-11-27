@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "stores": [
+    {
+      "id": "memberPlans",
+      "schema": {
+        "name": "com.clodhub/member-plan",
+        "version": "1.0.0",
+        "file": "interfaces/member-plan.schema.json"
+      }
+    },
+    {
+      "id": "memberVouchers",
+      "schema": {
+        "name": "com.clodhub/member-voucher",
+        "version": "1.0.0",
+        "file": "interfaces/member-voucher.schema.json"
+      }
+    },
+    {
+      "id": "memberSessions",
+      "schema": {
+        "name": "com.clodhub/member-session",
+        "version": "1.0.0",
+        "file": "interfaces/member-session.schema.json"
+      }
+    }
+  ],
+  "export": [
+    {
+      "format": "ndjson",
+      "portable": true,
+      "operation": "exportAll",
+      "description": "The records store's Records.exportAll: the collections memberPlans, memberSessions and memberVouchers as records export lines with their indexes, each document as its schema describes it, dates as {\"$date\": ISO text}."
+    }
+  ],
+  "import": [
+    {
+      "format": "ndjson",
+      "portable": true,
+      "operation": "importAll"
+    }
+  ],
+  "steps": [],
+  "verification": {
+    "counts": true,
+    "checksums": "none: compare the exported lines of the three collections in the source and the destination, which are the same text for the same documents",
+    "sampleReadBack": 20,
+    "endToEnd": "tests/web.test.ts"
+  },
+  "limits": {
+    "maxMegabytes": 100,
+    "requiresStop": false,
+    "cannotPreserve": [
+      "sign-up sessions that expire between the export and the import",
+      "changes staff make between the export and the import"
+    ]
+  },
+  "retention": {
+    "afterRemovalDays": 0
+  }
+}

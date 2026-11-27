@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "com.clodhub/member-voucher",
+  "x-version": "1.0.0",
+  "description": "A member voucher as kept in the records collection memberVouchers; its code is unique. It is written as a records export line's document: each date is {\"$date\": ISO 8601 text}.",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "planId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "rule": {
+      "$ref": "#/$defs/rule"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "expired",
+        "revoked"
+      ]
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "issuedAt": {
+      "$ref": "#/$defs/date"
+    },
+    "expiresAt": {
+      "$ref": "#/$defs/date"
+    }
+  },
+  "required": [
+    "_id",
+    "code",
+    "planId",
+    "name",
+    "email",
+    "rule",
+    "status",
+    "language",
+    "issuedAt",
+    "expiresAt"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "date": {
+      "type": "object",
+      "properties": {
+        "$date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "$date"
+      ],
+      "additionalProperties": false
+    },
+    "rule": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "discount",
+            "custom",
+            "mixed"
+          ],
+          "description": "discount: discountPercent off the covered items; custom: fixed prices for the items in itemPricing and nothing else; mixed: per item in itemPricing, a fixed price or a discount, other items at the catalogue price."
+        },
+        "discountPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99,
+          "description": "The discount plan's percentage; 0 for custom and mixed."
+        },
+        "itemSlugs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "categorySlugs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "allItems": {
+          "type": "boolean"
+        },
+        "itemPricing": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/itemPrice"
+          },
+          "description": "Custom and mixed plans: item slug to its member price. Absent for discount plans."
+        }
+      },
+      "required": [
+        "mode",
+        "discountPercent",
+        "itemSlugs",
+        "categorySlugs",
+        "allItems"
+      ],
+      "additionalProperties": false
+    },
+    "itemPrice": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "discount",
+            "fixed"
+          ]
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The one length a fixed price sells; 0 for a discount."
+        },
+        "price": {
+          "type": "integer",
+          "description": "The fixed price; 0 for a discount.",
+          "minimum": 0
+        },
+        "discountPercent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99,
+          "description": "A discount entry's percentage off the catalogue price."
+        }
+      },
+      "required": [
+        "minutes",
+        "price"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "x-clodhub-modules": {}
+}

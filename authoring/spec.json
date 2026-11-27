@@ -1,0 +1,445 @@
+{
+  "name": "member-pricing",
+  "version": "0.1.0",
+  "sourceRevision": "219d7dc979278f850fe0efd83c5e11eee26c3217",
+  "title": "Member pricing",
+  "description": "Member plans with a discount, fixed prices or both, sign-up through a link the shop shares and staff approve, member vouchers, and the one price resolver the reserve page and the server share, kept in a records store.",
+  "facilities": [
+    {
+      "id": "member-pricing",
+      "description": "Member plans, sign-up sessions approved by staff, member vouchers and the shared member price resolver, kept in a records store"
+    }
+  ],
+  "provides": [
+    {
+      "id": "member-pricing",
+      "type": "com.clodhub/member-pricing",
+      "version": "1.0.0",
+      "path": "interfaces/member-pricing.json"
+    }
+  ],
+  "requires": [
+    {
+      "id": "records",
+      "type": "com.clodhub/records",
+      "version": "1.0.0",
+      "path": "interfaces/required-records.json"
+    },
+    {
+      "id": "voucher-codes",
+      "type": "com.clodhub/voucher-codes",
+      "version": "1.0.0",
+      "path": "interfaces/required-voucher-codes.json"
+    }
+  ],
+  "collect": [
+    {
+      "id": "minimumFixedPrice",
+      "type": "integer",
+      "grammar": "integer",
+      "required": false,
+      "secret": false,
+      "default": 500
+    },
+    {
+      "id": "maximumFixedPrice",
+      "type": "integer",
+      "grammar": "integer",
+      "required": false,
+      "secret": false,
+      "default": 50000
+    },
+    {
+      "id": "fixedPriceStep",
+      "type": "integer",
+      "grammar": "integer",
+      "required": false,
+      "secret": false,
+      "default": 500
+    },
+    {
+      "id": "minimumMinutes",
+      "type": "integer",
+      "grammar": "integer",
+      "required": false,
+      "secret": false,
+      "default": 5
+    },
+    {
+      "id": "maximumMinutes",
+      "type": "integer",
+      "grammar": "integer",
+      "required": false,
+      "secret": false,
+      "default": 180
+    },
+    {
+      "id": "minutesStep",
+      "type": "integer",
+      "grammar": "integer",
+      "required": false,
+      "secret": false,
+      "default": 5
+    },
+    {
+      "id": "sessionMinutes",
+      "type": "integer",
+      "grammar": "integer",
+      "required": false,
+      "secret": false,
+      "default": 15
+    }
+  ],
+  "dependencies": [],
+  "tools": {
+    "node": "26.5"
+  },
+  "suites": [
+    {
+      "id": "web",
+      "argv": [
+        "node",
+        "--test",
+        "tests/web.test.ts"
+      ]
+    }
+  ],
+  "templates": [
+    "implementation/web/settings.ts"
+  ],
+  "text": {
+    "purpose": "Some customers (members, partners, staff) pay their own prices. A plan says how: a percentage off all items, some items or some categories (discount); fixed prices for a list of items at one length each and nothing else (custom); or, per item, a fixed price or a percentage off, with every other item at its catalogue price (mixed). Staff open a sign-up session for a plan and share its link; the person gives a name and email on that page; staff approve, and the member gets a voucher whose code gives the plan's prices until it expires or is revoked. The price rules (`resolveItemPrice` and the functions it uses) are pure and run the same on the reserve page and on the server, so the price a member sees is the price the server charges. Plans, sessions and vouchers live in the records store the application passes; codes come from the voucher-codes slot's component.",
+    "userInputs": "Fixed prices are multiples of `fixedPriceStep` from `minimumFixedPrice` to `maximumFixedPrice`, in minor units (5 to 500 euros in steps of 5 by default); their lengths are multiples of `minutesStep` from `minimumMinutes` to `maximumMinutes` (5 to 180 minutes in steps of 5). `sessionMinutes` is how long a sign-up link works after staff open it (15 minutes).",
+    "integration": "The application creates the service once per process with `createMemberPricing({ records, codes })`, where `codes` is the voucher-codes slot's `createVoucherCodes({ source })`, and calls `ensureIndexes()` at start. The owner's routes (behind staff-access) call `listPlans`, `createPlan`, `updatePlan`, `setPlanActive`, `removePlan`, `openSession` (then show the address of its own sign-up page for that session id, and a QR code of it), `session` (to watch for the person's details), `approve`, `lookup`, `revoke`, `remove`, `changeEmail` and `vouchersOf`; the customer's wallet (an app installed after the sign-up) asks `vouchersByEmail(email)` once email verification has confirmed the address; after `approve`, `changeEmail` (resend) and `remove` (when `notify` is true) the application emails the member. The sign-up page calls `session` and `submitSession`. The reserve page calls `validate(code)` and prices each line with `resolveItemPrice(rule, slug, categorySlug, item.options, minutes)` from `web/index.ts`; reservations prices the booking with the rule `activeRule(code)` gives and the same function, which the service also carries as `resolveItemPrice` because reservations receives only the service, and refuses the booking with `MEMBER_CODE_INVALID` when `activeRule` gives null.",
+    "infrastructure": "No service or account. Plans, vouchers and sign-up sessions are documents in the records collections `memberPlans`, `memberVouchers` and `memberSessions` (`PLANS_COLLECTION`, `VOUCHERS_COLLECTION`, `SESSIONS_COLLECTION`); the store removes sessions `sessionMinutes` after they are opened, and the code reads their age by its own clock as well.",
+    "verification": "`tests/web.test.ts` checks the settings template and its defaults; eligibility, fixed prices, discounts and the shared price resolver in the three modes, with the source's cases; rounding in minor units; the plan form's checks with their codes; validity in weeks, calendar months and years; the service over the records fixture with a voucher codes double that follows the voucher codes class's document (plans, sign-up sessions and their lifetime, approval once, a taken code drawn again, a failed approval returning the session to staff, validation reasons, lookups, revocation, removal, email changes, the vouchers of an address, expiry, indexes); the records export carried to another store; and the example. The member pricing class suite (`classes/member-pricing-class/check.mjs`) checks the same contract against any implementation.",
+    "scenarios": "Example Studio's \"Friends of the studio\" plan gives 15% off massages for six months. At the desk, staff open a sign-up and show its QR code; Ana enters her name and email on her phone, staff approve, and the application emails her the code. On the reserve page she enters it, sees the 60-minute Relaxing Massage at 63.75 euros instead of 75, and the server charges the same. Staff later revoke a partner's code and her next booking is refused.",
+    "updates": "Patch updates replace the files only; plans, vouchers and sessions stay in the records store in the forms their schemas describe (`interfaces/member-plan.schema.json`, `member-voucher.schema.json`, `member-session.schema.json`). Removing the component leaves the three collections in the store; vouchers then give no prices."
+  },
+  "agentInstructions": "Select this component for the member-pricing slot when the shop gives some customers their own prices (the recipe's member pricing feature). Leave the settings at their defaults unless the owner prices in other steps or bounds. Connect `records` to the records slot's component and `voucher-codes` to the voucher-codes slot's component. Connect the provided `member-pricing` to the application and to reservations' optional `member-pricing` requirement.",
+  "developerInstructions": "Nothing to supply. Call `ensureIndexes()` once at start, keep the owner's routes behind staff-access, and send the member emails after `approve`, `changeEmail` and `remove` (when `notify` is true): describe the voucher's own `rule`, which plan edits do not change. Price with `resolveItemPrice` on both the page and the server; never take a price from the page. Show prices with money's `formatMoney`.",
+  "suitability": {
+    "format": 1,
+    "jobs": [
+      "member-pricing"
+    ],
+    "profiles": [
+      {
+        "id": "any",
+        "load": {},
+        "cost": "none",
+        "regions": [
+          "any"
+        ],
+        "compliance": []
+      }
+    ],
+    "notes": "No provider of its own: plans, vouchers and sessions live in the records store the application passes."
+  },
+  "migration": {
+    "format": 1,
+    "stores": [
+      {
+        "id": "memberPlans",
+        "schema": {
+          "name": "com.clodhub/member-plan",
+          "version": "1.0.0",
+          "file": "interfaces/member-plan.schema.json"
+        }
+      },
+      {
+        "id": "memberVouchers",
+        "schema": {
+          "name": "com.clodhub/member-voucher",
+          "version": "1.0.0",
+          "file": "interfaces/member-voucher.schema.json"
+        }
+      },
+      {
+        "id": "memberSessions",
+        "schema": {
+          "name": "com.clodhub/member-session",
+          "version": "1.0.0",
+          "file": "interfaces/member-session.schema.json"
+        }
+      }
+    ],
+    "export": [
+      {
+        "format": "ndjson",
+        "portable": true,
+        "operation": "exportAll",
+        "description": "The records store's Records.exportAll: the collections memberPlans, memberSessions and memberVouchers as records export lines with their indexes, each document as its schema describes it, dates as {\"$date\": ISO text}."
+      }
+    ],
+    "import": [
+      {
+        "format": "ndjson",
+        "portable": true,
+        "operation": "importAll"
+      }
+    ],
+    "steps": [],
+    "verification": {
+      "counts": true,
+      "checksums": "none: compare the exported lines of the three collections in the source and the destination, which are the same text for the same documents",
+      "sampleReadBack": 20,
+      "endToEnd": "tests/web.test.ts"
+    },
+    "limits": {
+      "maxMegabytes": 100,
+      "requiresStop": false,
+      "cannotPreserve": [
+        "sign-up sessions that expire between the export and the import",
+        "changes staff make between the export and the import"
+      ]
+    },
+    "retention": {
+      "afterRemovalDays": 0
+    }
+  },
+  "infrastructure": {
+    "accounts": [],
+    "deployedReason": "No deployed service: plans, vouchers and sessions live in the records store the application passes."
+  },
+  "modules": {
+    "web": "web/index.ts",
+    "server": "server/index.ts"
+  },
+  "toolchains": {
+    "server": [
+      {
+        "name": "node",
+        "versionRange": ">=26.5.0 <27.0.0",
+        "probe": [
+          "node",
+          "--version"
+        ],
+        "install": {
+          "macos": [
+            "brew",
+            "install",
+            "node"
+          ],
+          "windows": [
+            "winget",
+            "install",
+            "--exact",
+            "--id",
+            "OpenJS.NodeJS"
+          ],
+          "linux": null
+        },
+        "manual": "Without the package manager, install Node 26 from nodejs.org (the installer, or the zip or tar archive with its folder put first on PATH); on Linux also from the NodeSource repository."
+      }
+    ],
+    "web": [
+      {
+        "name": "node",
+        "versionRange": ">=26.5.0 <27.0.0",
+        "probe": [
+          "node",
+          "--version"
+        ],
+        "install": {
+          "macos": [
+            "brew",
+            "install",
+            "node"
+          ],
+          "windows": [
+            "winget",
+            "install",
+            "--exact",
+            "--id",
+            "OpenJS.NodeJS"
+          ],
+          "linux": null
+        },
+        "manual": "Without the package manager, install Node 26 from nodejs.org (the installer, or the zip or tar archive with its folder put first on PATH); on Linux also from the NodeSource repository."
+      }
+    ]
+  },
+  "upstream": [],
+  "compatibility": {
+    "runtimes": {
+      "node": ">=26.5.0 <27.0.0"
+    },
+    "frameworks": {},
+    "dependencies": [],
+    "styles": {
+      "scope": "none",
+      "namespaces": [],
+      "conflicts": []
+    }
+  },
+  "maintenance": {
+    "owners": [
+      "Level N Ltd"
+    ],
+    "contact": "https://github.com/clodhub/member-pricing/issues",
+    "repository": "https://github.com/clodhub/member-pricing",
+    "updates": {
+      "source": "https://github.com/clodhub/member-pricing/releases",
+      "strategy": "manual"
+    }
+  },
+  "classes": [
+    {
+      "reference": {
+        "name": "pkg:clod/com.clodhub/member-pricing-class",
+        "version": "1.0.0",
+        "digest": "1d37fd9eb431274ea4847f568f4dc715d794e1894fca76e7526721f8d09064b0"
+      },
+      "descriptor": {
+        "format": 3,
+        "name": "pkg:clod/com.clodhub/member-pricing-class",
+        "version": "1.0.0",
+        "title": "Member pricing",
+        "summary": "Member plans with discounts, fixed prices or both, sign-up by a shared link approved by staff, member vouchers, and the price resolver the storefront and the server share",
+        "category": "commerce/catalogue-and-pricing",
+        "presentation": "none",
+        "provides": [
+          {
+            "type": "com.clodhub/member-pricing",
+            "version": "1.0.0",
+            "path": "classes/member-pricing-class/member-pricing.json",
+            "modules": {
+              "web": [
+                "web/index.ts"
+              ],
+              "server": [
+                "server/index.ts"
+              ]
+            }
+          }
+        ],
+        "requires": [
+          {
+            "type": "com.clodhub/records",
+            "version": "1.0.0"
+          },
+          {
+            "type": "com.clodhub/voucher-codes",
+            "version": "1.0.0"
+          }
+        ],
+        "settings": {
+          "type": "object",
+          "properties": {
+            "minimumFixedPrice": {
+              "type": "integer"
+            },
+            "maximumFixedPrice": {
+              "type": "integer"
+            },
+            "fixedPriceStep": {
+              "type": "integer"
+            },
+            "minimumMinutes": {
+              "type": "integer"
+            },
+            "maximumMinutes": {
+              "type": "integer"
+            },
+            "minutesStep": {
+              "type": "integer"
+            },
+            "sessionMinutes": {
+              "type": "integer"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "inventory": [
+          {
+            "path": "classes/member-pricing-class/check.mjs",
+            "digest": "97b958e7e9b6292923b598744253fa5c829cf07b2ac8038f6307bd24b10c0701"
+          },
+          {
+            "path": "classes/member-pricing-class/codes.ts",
+            "digest": "38b76e67cb4941d82e052baa8a5f78fccc67ff0437c7b3dffdb5a8806ae9534f"
+          },
+          {
+            "path": "classes/member-pricing-class/member-plan.schema.json",
+            "digest": "a395bc5b115194220510dc4438246c0b72fe18b0e87b06cdb86bffa86c75d050"
+          },
+          {
+            "path": "classes/member-pricing-class/member-pricing.json",
+            "digest": "a3d95a856eeb7cda20244f9bc0906e7b81488894de68303b747567650970dd78"
+          },
+          {
+            "path": "classes/member-pricing-class/member-session.schema.json",
+            "digest": "d6c91941ef410d80a99cd09e2556ff68d7df549929d664ebc8a2323b3ab5413d"
+          },
+          {
+            "path": "classes/member-pricing-class/member-voucher.schema.json",
+            "digest": "f167a0d2face9e01b809af22198e674ca32dbde3a5cb55454bb1b4dedb9df926"
+          },
+          {
+            "path": "classes/member-pricing-class/records.ts",
+            "digest": "f4989bd36054bae7fd4fe56744d16050d9bb464d5f79081fbd372635975c91c3"
+          },
+          {
+            "path": "classes/member-pricing-class/runtime.mjs",
+            "digest": "1d85f0dae92d5c6c859cd48a4211a933718ae3e168554a2b00806183c4b661f0"
+          }
+        ],
+        "verification": [
+          {
+            "id": "shared",
+            "root": "package",
+            "argv": [
+              "node",
+              "classes/member-pricing-class/check.mjs"
+            ],
+            "cwd": ".",
+            "prepare": [],
+            "tools": {
+              "node": "26.5"
+            },
+            "fixtures": [
+              "classes/member-pricing-class/check.mjs",
+              "classes/member-pricing-class/codes.ts",
+              "classes/member-pricing-class/member-plan.schema.json",
+              "classes/member-pricing-class/member-session.schema.json",
+              "classes/member-pricing-class/member-voucher.schema.json",
+              "classes/member-pricing-class/records.ts"
+            ],
+            "locks": [],
+            "network": false,
+            "timeoutSeconds": 60,
+            "expectedExit": 0,
+            "scope": "required-local",
+            "requirements": []
+          }
+        ]
+      }
+    }
+  ],
+  "implements": [
+    {
+      "name": "pkg:clod/com.clodhub/member-pricing-class",
+      "version": "1.0.0",
+      "digest": "1d37fd9eb431274ea4847f568f4dc715d794e1894fca76e7526721f8d09064b0"
+    }
+  ],
+  "release": {
+    "channel": "features",
+    "fixes": []
+  },
+  "images": [],
+  "vulnerabilityWaivers": [],
+  "supportedPlatforms": [
+    "server",
+    "web"
+  ],
+  "licence": "Apache-2.0",
+  "licenceFile": "LICENCE",
+  "noticeFile": "NOTICE",
+  "platforms": [
+    "server",
+    "web"
+  ]
+}
